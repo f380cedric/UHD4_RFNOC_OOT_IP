@@ -258,27 +258,66 @@ module rfnoc_block_gain #(
   // Note that we receive the data with I on bits [31:16] and Q on bits [15:0],
   // but this does not matter to our multiplier.
   //
-  mult_rc #(
-    .WIDTH_REAL (16),
-    .WIDTH_CPLX (16),
-    .WIDTH_P    (32),
-    .DROP_TOP_P (5),     // Must be 5 for a normal multiply in DSP48E1
-    .LATENCY    (4)      // Turn on all pipeline registers in the DSP48E1
-  ) mult_rc_i (
-    .clk         (axis_data_clk),
-    .reset       (axis_data_rst),
-    .real_tdata  (reg_gain),
-    .real_tlast  (m_in_payload_tlast),
-    .real_tvalid (m_in_payload_tvalid),
-    .real_tready (),
-    .cplx_tdata  (m_in_payload_tdata),
-    .cplx_tlast  (m_in_payload_tlast),
-    .cplx_tvalid (m_in_payload_tvalid),
-    .cplx_tready (m_in_payload_tready),
-    .p_tdata     (mult_tdata),
-    .p_tlast     (mult_tlast),
-    .p_tvalid    (mult_tvalid),
-    .p_tready    (mult_tready)
+  // mult_rc #(
+  //   .WIDTH_REAL (16),
+  //   .WIDTH_CPLX (16),
+  //   .WIDTH_P    (32),
+  //   .DROP_TOP_P (5),     // Must be 5 for a normal multiply in DSP48E1
+  //   .LATENCY    (4)      // Turn on all pipeline registers in the DSP48E1
+  // ) mult_rc_i (
+  //   .clk         (axis_data_clk),
+  //   .reset       (axis_data_rst),
+  //   .real_tdata  (reg_gain),
+  //   .real_tlast  (m_in_payload_tlast),
+  //   .real_tvalid (m_in_payload_tvalid),
+  //   .real_tready (),
+  //   .cplx_tdata  (m_in_payload_tdata),
+  //   .cplx_tlast  (m_in_payload_tlast),
+  //   .cplx_tvalid (m_in_payload_tvalid),
+  //   .cplx_tready (m_in_payload_tready),
+  //   .p_tdata     (mult_tdata),
+  //   .p_tlast     (mult_tlast),
+  //   .p_tvalid    (mult_tvalid),
+  //   .p_tready    (mult_tready)
+  // );
+
+  // cmul cmul_i (
+  //   .clk      (axis_data_clk),
+  //   .reset    (axis_data_rst),
+  //   .a_tdata  ({2*reg_gain, 16'b0}),
+  //   .a_tlast  (m_in_payload_tlast),
+  //   .a_tvalid (m_in_payload_tvalid),
+  //   .a_tready (),
+  //   .b_tdata  (m_in_payload_tdata),
+  //   .b_tlast  (m_in_payload_tlast),
+  //   .b_tvalid (m_in_payload_tvalid),
+  //   .b_tready (m_in_payload_tready),
+  //   .o_tdata  (mult_tdata),
+  //   .o_tlast  (mult_tlast),
+  //   .o_tvalid (mult_tvalid),
+  //   .o_tready (mult_tready)
+  // );
+
+  wire [31:0] gain = {2*reg_gain, 16'b0};
+
+  cmplx_mul cmplx_mul_i (
+    .aclk               (axis_data_clk),
+    .aresetn            (~axis_data_rst),
+    .s_axis_a_tdata     ({gain[15:0], gain[31:16]}),
+    .s_axis_a_tlast     (m_in_payload_tlast),
+    .s_axis_a_tvalid    (m_in_payload_tvalid),
+    .s_axis_a_tready    (),
+    .s_axis_b_tdata     ({m_in_payload_tdata[15:0], m_in_payload_tdata[31:16]}),
+    .s_axis_b_tlast     (m_in_payload_tlast),
+    .s_axis_b_tvalid    (m_in_payload_tvalid),
+    .s_axis_b_tready    (m_in_payload_tready),
+    .s_axis_ctrl_tdata  (8'd0),
+    .s_axis_ctrl_tvalid (1'b1),
+    .s_axis_ctrl_tready (),
+    .m_axis_dout_tdata  ({mult_tdata[31:0], mult_tdata[63:32]}),
+    .m_axis_dout_tlast  (mult_tlast),
+    .m_axis_dout_tvalid (mult_tvalid),
+    .m_axis_dout_tready (mult_tready)
   );
 
   // Clip the results
